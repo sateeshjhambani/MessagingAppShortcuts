@@ -1,6 +1,11 @@
 package com.example.messagingappshortcuts
 
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.content.getSystemService
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -47,6 +53,11 @@ class MainActivity: ComponentActivity() {
                     ) {
                         Text(text = "Add dynamic shortcut")
                     }
+                    Button(
+                        onClick = { addPinnedShortcut() }
+                    ) {
+                        Text(text = "Add pinned shortcut")
+                    }
                 }
             }
         }
@@ -56,6 +67,34 @@ class MainActivity: ComponentActivity() {
         super.onNewIntent(intent)
 
         handleIntent(intent)
+    }
+
+    private fun addPinnedShortcut() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val shortcutManager = getSystemService<ShortcutManager>()!!
+        if (shortcutManager.isRequestPinShortcutSupported) {
+            val shortcut = ShortcutInfo.Builder(applicationContext, ShortcutType.PINNED.name)
+                .setShortLabel("Send Message")
+                .setLongLabel("This sends a message to a friend")
+                .setIcon(Icon.createWithResource(applicationContext, R.drawable.baseline_baby_changing_station_24))
+                .setIntent(
+                    Intent(applicationContext, MainActivity::class.java).apply {
+                        action = Intent.ACTION_VIEW
+                        putExtra(SHORTCUT_ID_KEY, ShortcutType.PINNED.name)
+                    }
+                )
+                .build()
+
+            val callbackIntent = shortcutManager.createShortcutResultIntent(shortcut)
+            val successPendingIntent = PendingIntent.getBroadcast(
+                applicationContext,
+                0,
+                callbackIntent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
+            shortcutManager.requestPinShortcut(shortcut, successPendingIntent.intentSender)
+        }
     }
 
     private fun addDynamicShortcut() {
